@@ -52,6 +52,52 @@
                      id="isat-scan-progress-bar"></div>
             </div>
         </div>
+
+        <!-- Error alert (hidden by default) -->
+        <div id="isat-scan-error" class="alert alert-danger mt-3" style="display: none;"></div>
+    </div>
+</div>
+
+<!-- Scan Results (hidden until a scan completes) -->
+<div class="card isat-card mb-4" id="isat-results-card" style="display: none;">
+    <div class="card-header">
+        <i class="bi bi-hdd-network"></i> Port Scan Results — <span id="isat-results-target"></span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-isat mb-0">
+            <thead>
+                <tr>
+                    <th>Port</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="isat-results-body">
+                <!-- JS ile dinamik olarak doldurulacak -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Security Headers Results (hidden until a scan completes) -->
+<div class="card isat-card mb-4" id="isat-headers-card" style="display: none;">
+    <div class="card-header">
+        <i class="bi bi-shield-exclamation"></i> HTTP Security Headers — <span id="isat-headers-target"></span>
+    </div>
+    <div class="card-body">
+        <div id="isat-headers-unreachable" class="isat-footer-note" style="display: none;">
+            Target could not be reached over HTTP/HTTPS — header analysis skipped.
+        </div>
+        <table class="table table-isat mb-0" id="isat-headers-table">
+            <thead>
+                <tr>
+                    <th>Header</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="isat-headers-body">
+                <!-- JS ile dinamik olarak doldurulacak -->
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -104,39 +150,124 @@
 
 {% block scripts %}
 <script>
-    // Adım 3+'da gerçek AJAX çağrısı ile değiştirilecek.
-    // Şimdilik sadece UI davranışını (spinner + progress bar) test ediyoruz.
-    document.getElementById('isat-scan-form').addEventListener('submit', function (e) {
+    // Adım 3 entegrasyonu: artık gerçek backend'e (/scan) bağlıyoruz.
+    document.getElementById('isat-scan-form').addEventListener('submit', async function (e) {
         e.preventDefault();
+
+        const targetInput = document.getElementById('target-input');
+        const target = targetInput.value.trim();
 
         const progressWrapper = document.getElementById('isat-scan-progress');
         const progressBar = document.getElementById('isat-scan-progress-bar');
         const statusText = document.getElementById('isat-scan-status-text');
+        const errorBox = document.getElementById('isat-scan-error');
+        const resultsCard = document.getElementById('isat-results-card');
+        const resultsBody = document.getElementById('isat-results-body');
+        const resultsTarget = document.getElementById('isat-results-target');
+
+        // Önceki sonuçları/hataları temizle
+        errorBox.style.display = 'none';
+        resultsCard.style.display = 'none';
+        resultsBody.innerHTML = '';
 
         progressWrapper.style.display = 'block';
+        progressBar.style.width = '15%';
+        statusText.textContent = 'Scanning ports...';
 
-        let progress = 0;
-        const steps = [
-            "Scanning ports...",
-            "Checking HTTP headers...",
-            "Analyzing SSL certificate...",
-            "Retrieving DNS records...",
-            "Querying WHOIS data...",
-            "Calculating risk score..."
-        ];
-        let stepIndex = 0;
+        try {
+            const response = await fetch('/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: target })
+            });
 
-        const interval = setInterval(() => {
-            progress += 100 / steps.length;
-            progressBar.style.width = Math.min(progress, 100) + '%';
-            statusText.textContent = steps[stepIndex] || "Finishing up...";
-            stepIndex++;
+            const data = await response.json();
 
-            if (progress >= 100) {
-                clearInterval(interval);
-                statusText.textContent = "Scan complete (demo only — backend not connected yet).";
+            if (!response.ok) {
+                // Backend'den gelen anlamlı hata mesajını göster
+                errorBox.textContent = data.error || 'Bilinmeyen bir hata oluştu.';
+                errorBox.style.display = 'block';
+                progressWrapper.style.display = 'none';
+                return;
             }
-        }, 500);
+
+            progressBar.style.width = '60%';
+            statusText.textContent = 'Checking HTTP headers...';
+
+            progressBar.style.width = '100%';
+            statusText.textContent = 'Scan complete.';
+
+            // Sonuçları tabloya bas
+            resultsTarget.textContent = data.target;
+            data.ports.forEach(function (portInfo) {
+                const row = document.createElement('tr');
+
+                const portCell = document.createElement('td');
+                portCell.textContent = portInfo.port;
+
+                const statusCell = document.createElement('td');
+                const badge = document.createElement('span');
+                badge.textContent = portInfo.status;
+
+                if (portInfo.status === 'open') {
+                    badge.className = 'badge badge-high';
+                } else if (portInfo.status === 'filtered') {
+                    badge.className = 'badge badge-medium';
+                } else {
+                    badge.className = 'badge badge-low';
+                }
+
+                statusCell.appendChild(badge);
+                row.appendChild(portCell);
+                row.appendChild(statusCell);
+                resultsBody.appendChild(row);
+            });
+
+            resultsCard.style.display = 'block';
+
+            // --- Security Headers sonuçlarını işle ---
+            const headersCard = document.getElementById('isat-headers-card');
+            const headersTarget = document.getElementById('isat-headers-target');
+            const headersBody = document.getElementById('isat-headers-body');
+            const headersTable = document.getElementById('isat-headers-table');
+            const headersUnreachable = document.getElementById('isat-headers-unreachable');
+
+            headersBody.innerHTML = '';
+            headersTarget.textContent = data.target;
+
+            const headerInfo = data.headers;
+
+            if (!headerInfo.reachable) {
+                headersTable.style.display = 'none';
+                headersUnreachable.style.display = 'block';
+            } else {
+                headersTable.style.display = 'table';
+                headersUnreachable.style.display = 'none';
+
+                headerInfo.present.forEach(function (headerName) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${headerName}</td><td><span class="badge badge-low">Present</span></td>`;
+                    headersBody.appendChild(row);
+                });
+
+                headerInfo.missing.forEach(function (headerName) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${headerName}</td><td><span class="badge badge-high">Missing</span></td>`;
+                    headersBody.appendChild(row);
+                });
+            }
+
+            headersCard.style.display = 'block';
+
+            setTimeout(() => {
+                progressWrapper.style.display = 'none';
+            }, 800);
+
+        } catch (err) {
+            errorBox.textContent = 'Sunucuya bağlanılamadı. Uygulamanın çalıştığından emin olun.';
+            errorBox.style.display = 'block';
+            progressWrapper.style.display = 'none';
+        }
     });
 </script>
 {% endblock %}
