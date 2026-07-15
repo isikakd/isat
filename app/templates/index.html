@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ISAT{% endblock %}
+
+{% block content %}
+
+<!-- Topbar -->
+<div class="isat-topbar">
+    <div>
+        <h4 class="mb-0">Dashboard</h4>
+        <small class="isat-footer-note">Internal Security Assessment Tool</small>
+    </div>
+    <div class="text-accent">
+        <i class="bi bi-shield-check"></i> Defensive Assessment Only
+    </div>
+</div>
+
+<!-- Scan Form Card -->
+<div class="card isat-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-search"></i> New Security Assessment
+    </div>
+    <div class="card-body">
+        <form id="isat-scan-form" class="row g-2 align-items-center">
+            <div class="col-md-8">
+                <input
+                    type="text"
+                    class="form-control isat-scan-input"
+                    id="target-input"
+                    name="target"
+                    placeholder="Enter a domain (example.com) or IP address (8.8.8.8)"
+                    required
+                >
+            </div>
+            <div class="col-md-4 d-grid">
+                <button type="submit" class="btn btn-isat-primary">
+                    <i class="bi bi-play-fill"></i> Start Scan
+                </button>
+            </div>
+        </form>
+
+        <!-- Progress indicator (hidden until scan starts) -->
+        <div id="isat-scan-progress" class="mt-3">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="spinner-border isat-spinner text-accent" role="status"></div>
+                <span class="isat-footer-note" id="isat-scan-status-text">
+                    Initializing scan...
+                </span>
+            </div>
+            <div class="progress" style="height: 6px; background-color: var(--isat-bg);">
+                <div class="progress-bar bg-success" role="progressbar" style="width: 0%"
+                     id="isat-scan-progress-bar"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Scans -->
+<div class="card isat-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul"></i> Recent Scans</span>
+        <a href="#" class="text-accent small text-decoration-none">View all</a>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-isat mb-0">
+            <thead>
+                <tr>
+                    <th>Target</th>
+                    <th>Date</th>
+                    <th>Risk Score</th>
+                    <th>Status</th>
+                    <th class="text-end pe-4">Report</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!--
+                    Bu tablo şimdilik dummy (sahte) veri gösteriyor.
+                    Adım 11'de (Scan History) bu veriler SQLite'tan gelecek.
+                -->
+                <tr>
+                    <td>example.com</td>
+                    <td>2026-07-10</td>
+                    <td><span class="badge badge-medium">42 / Medium</span></td>
+                    <td><span class="text-accent"><i class="bi bi-check-circle"></i> Completed</span></td>
+                    <td class="text-end pe-4">
+                        <a href="#" class="text-muted"><i class="bi bi-file-earmark-pdf"></i></a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>testsite.local</td>
+                    <td>2026-07-08</td>
+                    <td><span class="badge badge-low">12 / Low</span></td>
+                    <td><span class="text-accent"><i class="bi bi-check-circle"></i> Completed</span></td>
+                    <td class="text-end pe-4">
+                        <a href="#" class="text-muted"><i class="bi bi-file-earmark-pdf"></i></a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Adım 3+'da gerçek AJAX çağrısı ile değiştirilecek.
+    // Şimdilik sadece UI davranışını (spinner + progress bar) test ediyoruz.
+    document.getElementById('isat-scan-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const progressWrapper = document.getElementById('isat-scan-progress');
+        const progressBar = document.getElementById('isat-scan-progress-bar');
+        const statusText = document.getElementById('isat-scan-status-text');
+
+        progressWrapper.style.display = 'block';
+
+        let progress = 0;
+        const steps = [
+            "Scanning ports...",
+            "Checking HTTP headers...",
+            "Analyzing SSL certificate...",
+            "Retrieving DNS records...",
+            "Querying WHOIS data...",
+            "Calculating risk score..."
+        ];
+        let stepIndex = 0;
+
+        const interval = setInterval(() => {
+            progress += 100 / steps.length;
+            progressBar.style.width = Math.min(progress, 100) + '%';
+            statusText.textContent = steps[stepIndex] || "Finishing up...";
+            stepIndex++;
+
+            if (progress >= 100) {
+                clearInterval(interval);
+                statusText.textContent = "Scan complete (demo only — backend not connected yet).";
+            }
+        }, 500);
+    });
+</script>
+{% endblock %}

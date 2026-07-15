@@ -1,0 +1,156 @@
+/* ==========================================================
+   ISAT - Cybersecurity Dark Theme
+   ========================================================== */
+
+:root {
+    --isat-bg: #0d1117;
+    --isat-bg-secondary: #161b22;
+    --isat-card-bg: #1a2029;
+    --isat-border: #2b3440;
+    --isat-accent: #00e676;       /* neon green - "secure" rengi */
+    --isat-accent-dim: #00c264;
+    --isat-danger: #ff5252;
+    --isat-warning: #ffb300;
+    --isat-text-muted: #8b98a5;
+}
+
+body {
+    background-color: var(--isat-bg);
+    color: #e6edf3;
+    font-family: "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+}
+
+/* ---------- Sidebar ---------- */
+.isat-sidebar {
+    background-color: var(--isat-bg-secondary);
+    min-height: 100vh;
+    border-right: 1px solid var(--isat-border);
+    padding-top: 1.5rem;
+}
+
+.isat-sidebar .brand {
+    color: var(--isat-accent);
+    font-weight: 700;
+    font-size: 1.3rem;
+    letter-spacing: 1px;
+    padding: 0 1.25rem 1.5rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.isat-sidebar .nav-link {
+    color: var(--isat-text-muted);
+    padding: 0.7rem 1.25rem;
+    border-left: 3px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    transition: all 0.15s ease-in-out;
+}
+
+.isat-sidebar .nav-link:hover {
+    color: #ffffff;
+    background-color: rgba(0, 230, 118, 0.06);
+}
+
+.isat-sidebar .nav-link.active {
+    color: var(--isat-accent);
+    border-left-color: var(--isat-accent);
+    background-color: rgba(0, 230, 118, 0.08);
+}
+
+/* ---------- Main content ---------- */
+.isat-main {
+    padding: 2rem 2.5rem;
+}
+
+.isat-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.isat-topbar h4 {
+    font-weight: 600;
+}
+
+/* ---------- Cards ---------- */
+.isat-card {
+    background-color: var(--isat-card-bg);
+    border: 1px solid var(--isat-border);
+    border-radius: 0.6rem;
+}
+
+.isat-card .card-header {
+    background-color: transparent;
+    border-bottom: 1px solid var(--isat-border);
+    font-weight: 600;
+}
+
+/* ---------- Scan form ---------- */
+.isat-scan-input {
+    background-color: var(--isat-bg);
+    border: 1px solid var(--isat-border);
+    color: #e6edf3;
+}
+
+.isat-scan-input:focus {
+    background-color: var(--isat-bg);
+    color: #e6edf3;
+    border-color: var(--isat-accent);
+    box-shadow: 0 0 0 0.2rem rgba(0, 230, 118, 0.15);
+}
+
+.btn-isat-primary {
+    background-color: var(--isat-accent);
+    border-color: var(--isat-accent);
+    color: #0d1117;
+    font-weight: 600;
+}
+
+.btn-isat-primary:hover {
+    background-color: var(--isat-accent-dim);
+    border-color: var(--isat-accent-dim);
+    color: #0d1117;
+}
+
+/* ---------- Tables ---------- */
+.table-isat {
+    color: #e6edf3;
+}
+
+.table-isat thead {
+    color: var(--isat-text-muted);
+    border-bottom: 1px solid var(--isat-border);
+}
+
+.table-isat td, .table-isat th {
+    border-color: var(--isat-border);
+    vertical-align: middle;
+}
+
+/* ---------- Badges / status ---------- */
+.badge-low   { background-color: var(--isat-accent); color: #0d1117; }
+.badge-medium{ background-color: var(--isat-warning); color: #0d1117; }
+.badge-high  { background-color: var(--isat-danger);  color: #ffffff; }
+
+/* ---------- Spinner / progress ---------- */
+#isat-scan-progress {
+    display: none;
+}
+
+.isat-spinner {
+    width: 1.1rem;
+    height: 1.1rem;
+    border-width: 0.15em;
+}
+
+/* ---------- Misc ---------- */
+.text-accent { color: var(--isat-accent) !important; }
+.isat-footer-note {
+    color: var(--isat-text-muted);
+    font-size: 0.85rem;
+}
