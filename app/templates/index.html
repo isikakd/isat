@@ -58,6 +58,43 @@
     </div>
 </div>
 
+<!-- Report Actions Bar (hidden until a scan completes) -->
+<div class="d-flex justify-content-between align-items-center mb-3" id="isat-report-actions" style="display: none;">
+    <span class="isat-footer-note">Assessment results for <strong id="isat-report-actions-target"></strong></span>
+    <button class="btn btn-isat-primary" id="isat-download-report-btn">
+        <i class="bi bi-file-earmark-arrow-down"></i> Download PDF Report
+    </button>
+</div>
+
+<!-- Risk Score Summary (hidden until a scan completes) -->
+<div class="card isat-card mb-4" id="isat-risk-card" style="display: none;">
+    <div class="card-header">
+        <i class="bi bi-speedometer"></i> Risk Score — <span id="isat-risk-target"></span>
+    </div>
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span id="isat-risk-label" class="fw-bold"></span>
+            <span id="isat-risk-score-text"></span>
+        </div>
+        <div class="progress mb-3" style="height: 14px; background-color: var(--isat-bg);">
+            <div class="progress-bar" role="progressbar" style="width: 0%" id="isat-risk-progress-bar"></div>
+        </div>
+        <div id="isat-risk-breakdown" class="isat-footer-note"></div>
+    </div>
+</div>
+
+<!-- Security Recommendations (hidden until a scan completes) -->
+<div class="card isat-card mb-4" id="isat-recommendations-card" style="display: none;">
+    <div class="card-header">
+        <i class="bi bi-clipboard-check"></i> Security Recommendations
+    </div>
+    <div class="card-body">
+        <ul class="mb-0" id="isat-recommendations-list" style="padding-left: 1.2rem;">
+            <!-- JS ile dinamik olarak doldurulacak -->
+        </ul>
+    </div>
+</div>
+
 <!-- Scan Results (hidden until a scan completes) -->
 <div class="card isat-card mb-4" id="isat-results-card" style="display: none;">
     <div class="card-header">
@@ -96,6 +133,94 @@
             </thead>
             <tbody id="isat-headers-body">
                 <!-- JS ile dinamik olarak doldurulacak -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- SSL Certificate Results (hidden until a scan completes) -->
+<div class="card isat-card mb-4" id="isat-ssl-card" style="display: none;">
+    <div class="card-header">
+        <i class="bi bi-lock"></i> SSL Certificate — <span id="isat-ssl-target"></span>
+    </div>
+    <div class="card-body">
+        <div id="isat-ssl-unavailable" class="isat-footer-note" style="display: none;"></div>
+        <table class="table table-isat mb-0" id="isat-ssl-table">
+            <tbody>
+                <tr>
+                    <td style="width: 220px;">Issuer</td>
+                    <td id="isat-ssl-issuer"></td>
+                </tr>
+                <tr>
+                    <td>Valid From</td>
+                    <td id="isat-ssl-valid-from"></td>
+                </tr>
+                <tr>
+                    <td>Expiration Date</td>
+                    <td id="isat-ssl-valid-until"></td>
+                </tr>
+                <tr>
+                    <td>Days Remaining</td>
+                    <td id="isat-ssl-days-remaining"></td>
+                </tr>
+                <tr>
+                    <td>Certificate Status</td>
+                    <td id="isat-ssl-status"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- DNS Records Results (hidden until a scan completes) -->
+<div class="card isat-card mb-4" id="isat-dns-card" style="display: none;">
+    <div class="card-header">
+        <i class="bi bi-diagram-3"></i> DNS Information — <span id="isat-dns-target"></span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-isat mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 120px;">Record Type</th>
+                    <th>Values</th>
+                </tr>
+            </thead>
+            <tbody id="isat-dns-body">
+                <!-- JS ile dinamik olarak doldurulacak -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- WHOIS Results (hidden until a scan completes) -->
+<div class="card isat-card mb-4" id="isat-whois-card" style="display: none;">
+    <div class="card-header">
+        <i class="bi bi-person-vcard"></i> WHOIS Information — <span id="isat-whois-target"></span>
+    </div>
+    <div class="card-body">
+        <div id="isat-whois-unavailable" class="isat-footer-note" style="display: none;"></div>
+        <table class="table table-isat mb-0" id="isat-whois-table">
+            <tbody>
+                <tr>
+                    <td style="width: 220px;">Registrar</td>
+                    <td id="isat-whois-registrar"></td>
+                </tr>
+                <tr>
+                    <td>Creation Date</td>
+                    <td id="isat-whois-creation"></td>
+                </tr>
+                <tr>
+                    <td>Expiration Date</td>
+                    <td id="isat-whois-expiration"></td>
+                </tr>
+                <tr>
+                    <td>Updated Date</td>
+                    <td id="isat-whois-updated"></td>
+                </tr>
+                <tr>
+                    <td>Name Servers</td>
+                    <td id="isat-whois-nameservers"></td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -150,6 +275,50 @@
 
 {% block scripts %}
 <script>
+    // En son tamamlanan taramanın verisini saklıyoruz, PDF indirme
+    // butonuna basıldığında bu veriyi tekrar backend'e göndereceğiz.
+    let lastScanData = null;
+
+    document.getElementById('isat-download-report-btn').addEventListener('click', async function () {
+        if (!lastScanData) return;
+
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
+
+        try {
+            const response = await fetch('/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(lastScanData)
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                alert(errData.error || 'Rapor oluşturulamadı.');
+                return;
+            }
+
+            // Dönen PDF blob'unu bir indirme linkine çevirip otomatik tıklıyoruz
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ISAT_Report_${lastScanData.target}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+
+        } catch (err) {
+            alert('Sunucuya bağlanılamadı.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    });
+
     // Adım 3 entegrasyonu: artık gerçek backend'e (/scan) bağlıyoruz.
     document.getElementById('isat-scan-form').addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -196,6 +365,67 @@
 
             progressBar.style.width = '100%';
             statusText.textContent = 'Scan complete.';
+
+            // PDF rapor butonunun kullanabilmesi için son sonucu saklıyoruz
+            lastScanData = data;
+
+            // Rapor işlemleri barını (indirme butonu) göster
+            document.getElementById('isat-report-actions').style.display = 'flex';
+            document.getElementById('isat-report-actions-target').textContent = data.target;
+
+            // --- Risk Skoru sonuçlarını işle (diğer kartlardan önce gösteriliyor) ---
+            const riskCard = document.getElementById('isat-risk-card');
+            const riskTarget = document.getElementById('isat-risk-target');
+            const riskLabel = document.getElementById('isat-risk-label');
+            const riskScoreText = document.getElementById('isat-risk-score-text');
+            const riskProgressBar = document.getElementById('isat-risk-progress-bar');
+            const riskBreakdown = document.getElementById('isat-risk-breakdown');
+
+            riskTarget.textContent = data.target;
+            const riskInfo = data.risk;
+
+            riskProgressBar.style.width = riskInfo.score + '%';
+            riskScoreText.textContent = riskInfo.score + ' / 100';
+
+            if (riskInfo.level === 'low') {
+                riskLabel.textContent = 'Low Risk';
+                riskLabel.className = 'fw-bold text-accent';
+                riskProgressBar.className = 'progress-bar bg-success';
+            } else if (riskInfo.level === 'medium') {
+                riskLabel.textContent = 'Medium Risk';
+                riskLabel.className = 'fw-bold';
+                riskLabel.style.color = 'var(--isat-warning)';
+                riskProgressBar.className = 'progress-bar bg-warning';
+            } else {
+                riskLabel.textContent = 'High Risk';
+                riskLabel.className = 'fw-bold';
+                riskLabel.style.color = 'var(--isat-danger)';
+                riskProgressBar.className = 'progress-bar bg-danger';
+            }
+
+            if (riskInfo.breakdown && riskInfo.breakdown.length > 0) {
+                riskBreakdown.innerHTML = 'Contributing factors: ' + riskInfo.breakdown.join(', ');
+            } else {
+                riskBreakdown.textContent = 'No significant risk factors detected.';
+            }
+
+            riskCard.style.display = 'block';
+
+            // --- Security Recommendations sonuçlarını işle ---
+            const recCard = document.getElementById('isat-recommendations-card');
+            const recList = document.getElementById('isat-recommendations-list');
+
+            recList.innerHTML = '';
+            const recommendations = data.recommendations || [];
+
+            recommendations.forEach(function (recText) {
+                const li = document.createElement('li');
+                li.textContent = recText;
+                li.className = 'mb-2';
+                recList.appendChild(li);
+            });
+
+            recCard.style.display = 'block';
 
             // Sonuçları tabloya bas
             resultsTarget.textContent = data.target;
@@ -258,6 +488,117 @@
             }
 
             headersCard.style.display = 'block';
+
+            // --- SSL Sertifika sonuçlarını işle ---
+            const sslCard = document.getElementById('isat-ssl-card');
+            const sslTarget = document.getElementById('isat-ssl-target');
+            const sslTable = document.getElementById('isat-ssl-table');
+            const sslUnavailable = document.getElementById('isat-ssl-unavailable');
+
+            sslTarget.textContent = data.target;
+            const sslInfo = data.ssl;
+
+            if (!sslInfo.has_ssl) {
+                sslTable.style.display = 'none';
+                sslUnavailable.style.display = 'block';
+                sslUnavailable.textContent = sslInfo.error || 'SSL sertifika bilgisi alınamadı.';
+            } else {
+                sslTable.style.display = 'table';
+                sslUnavailable.style.display = 'none';
+
+                document.getElementById('isat-ssl-issuer').textContent = sslInfo.issuer;
+                document.getElementById('isat-ssl-valid-from').textContent = sslInfo.valid_from;
+                document.getElementById('isat-ssl-valid-until').textContent = sslInfo.valid_until;
+                document.getElementById('isat-ssl-days-remaining').textContent = sslInfo.days_remaining + ' gün';
+
+                const statusCell = document.getElementById('isat-ssl-status');
+                statusCell.innerHTML = '';
+                const statusBadge = document.createElement('span');
+
+                if (sslInfo.status === 'valid') {
+                    statusBadge.className = 'badge badge-low';
+                    statusBadge.textContent = 'Valid';
+                } else if (sslInfo.status === 'expiring_soon') {
+                    statusBadge.className = 'badge badge-medium';
+                    statusBadge.textContent = 'Expiring Soon';
+                } else {
+                    statusBadge.className = 'badge badge-high';
+                    statusBadge.textContent = 'Expired';
+                }
+
+                statusCell.appendChild(statusBadge);
+            }
+
+            sslCard.style.display = 'block';
+
+            // --- DNS sonuçlarını işle ---
+            const dnsCard = document.getElementById('isat-dns-card');
+            const dnsTarget = document.getElementById('isat-dns-target');
+            const dnsBody = document.getElementById('isat-dns-body');
+
+            dnsBody.innerHTML = '';
+            dnsTarget.textContent = data.target;
+
+            const dnsInfo = data.dns;
+
+            if (dnsInfo.error) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="2" class="isat-footer-note">${dnsInfo.error}</td>`;
+                dnsBody.appendChild(row);
+            } else {
+                ['A', 'AAAA', 'MX', 'TXT', 'NS'].forEach(function (recordType) {
+                    const values = dnsInfo[recordType] || [];
+                    const row = document.createElement('tr');
+
+                    const typeCell = document.createElement('td');
+                    typeCell.innerHTML = `<strong>${recordType}</strong>`;
+
+                    const valuesCell = document.createElement('td');
+                    if (values.length === 0) {
+                        valuesCell.innerHTML = '<span class="isat-footer-note">No records found</span>';
+                    } else {
+                        valuesCell.innerHTML = values.map(v => `<div>${v}</div>`).join('');
+                    }
+
+                    row.appendChild(typeCell);
+                    row.appendChild(valuesCell);
+                    dnsBody.appendChild(row);
+                });
+            }
+
+            dnsCard.style.display = 'block';
+
+            // --- WHOIS sonuçlarını işle ---
+            const whoisCard = document.getElementById('isat-whois-card');
+            const whoisTarget = document.getElementById('isat-whois-target');
+            const whoisTable = document.getElementById('isat-whois-table');
+            const whoisUnavailable = document.getElementById('isat-whois-unavailable');
+
+            whoisTarget.textContent = data.target;
+            const whoisInfo = data.whois;
+
+            if (!whoisInfo.available) {
+                whoisTable.style.display = 'none';
+                whoisUnavailable.style.display = 'block';
+                whoisUnavailable.textContent = whoisInfo.error || 'WHOIS bilgisi alınamadı.';
+            } else {
+                whoisTable.style.display = 'table';
+                whoisUnavailable.style.display = 'none';
+
+                document.getElementById('isat-whois-registrar').textContent = whoisInfo.registrar || '-';
+                document.getElementById('isat-whois-creation').textContent = whoisInfo.creation_date || '-';
+                document.getElementById('isat-whois-expiration').textContent = whoisInfo.expiration_date || '-';
+                document.getElementById('isat-whois-updated').textContent = whoisInfo.updated_date || '-';
+
+                const nsCell = document.getElementById('isat-whois-nameservers');
+                if (whoisInfo.name_servers && whoisInfo.name_servers.length > 0) {
+                    nsCell.innerHTML = whoisInfo.name_servers.map(ns => `<div>${ns}</div>`).join('');
+                } else {
+                    nsCell.textContent = '-';
+                }
+            }
+
+            whoisCard.style.display = 'block';
 
             setTimeout(() => {
                 progressWrapper.style.display = 'none';
