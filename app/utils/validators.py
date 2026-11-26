@@ -11,38 +11,6 @@ IPV4_PATTERN = re.compile(
 )
 
 
-def normalize_target(raw_target):
-    """
-    Kullanıcının sıkça yaptığı, aslında kötü niyetli olmayan ama ham
-    haliyle validasyondan geçemeyecek girdileri (protokol öneki, sondaki
-    path/slash, port numarası, baştaki/sondaki boşluk) temizler.
-
-    Örnek: "https://example.com/path" -> "example.com"
-
-    Bu fonksiyon güvenlik kontrolü YAPMAZ, yalnızca biçimsel bir ön
-    temizlik yapar; asıl doğrulama hâlâ validate_target() içinde
-    gerçekleşir. Amaç, kullanıcıyı gereksiz yere reddetmek yerine,
-    yaygın ve zararsız yazım alışkanlıklarını tolere etmektir.
-    """
-    target = raw_target.strip()
-
-    # Yaygın protokol öneklerini kaldır
-    for prefix in ("https://", "http://"):
-        if target.lower().startswith(prefix):
-            target = target[len(prefix):]
-            break
-
-    # Sondaki path'i kaldır (ör: "example.com/path" -> "example.com")
-    target = target.split("/")[0]
-
-    # Sondaki port numarasını kaldır (ör: "example.com:8080" -> "example.com").
-    # IPv6 adresleriyle karışmaması için yalnızca tek ':' varsa uygularız.
-    if target.count(":") == 1:
-        target = target.split(":")[0]
-
-    return target.strip()
-
-
 def _is_valid_ipv4(value):
     """Bir string'in geçerli bir IPv4 adresi olup olmadığını kontrol eder."""
     match = IPV4_PATTERN.match(value)

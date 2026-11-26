@@ -230,7 +230,7 @@
 <div class="card isat-card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-list-ul"></i> Recent Scans</span>
-        <a href="{{ url_for('main.history') }}" class="text-accent small text-decoration-none">View all</a>
+        <a href="#" class="text-accent small text-decoration-none">View all</a>
     </div>
     <div class="card-body p-0">
         <table class="table table-isat mb-0">
@@ -244,27 +244,28 @@
                 </tr>
             </thead>
             <tbody>
-                {% if recent_scans %}
-                {% for scan in recent_scans %}
+                <!--
+                    Bu tablo şimdilik dummy (sahte) veri gösteriyor.
+                    Adım 11'de (Scan History) bu veriler SQLite'tan gelecek.
+                -->
                 <tr>
-                    <td>{{ scan.target }}</td>
-                    <td>{{ scan.scan_date }}</td>
-                    <td><span class="badge badge-{{ scan.risk_level }}">{{ scan.risk_score }} / {{ scan.risk_level | capitalize }}</span></td>
+                    <td>example.com</td>
+                    <td>2026-07-10</td>
+                    <td><span class="badge badge-medium">42 / Medium</span></td>
                     <td><span class="text-accent"><i class="bi bi-check-circle"></i> Completed</span></td>
                     <td class="text-end pe-4">
-                        <a href="{{ url_for('main.download_historical_report', scan_id=scan.id) }}" class="text-muted">
-                            <i class="bi bi-file-earmark-pdf"></i>
-                        </a>
+                        <a href="#" class="text-muted"><i class="bi bi-file-earmark-pdf"></i></a>
                     </td>
                 </tr>
-                {% endfor %}
-                {% else %}
                 <tr>
-                    <td colspan="5" class="isat-footer-note text-center py-3">
-                        No scans yet. Run your first assessment above.
+                    <td>testsite.local</td>
+                    <td>2026-07-08</td>
+                    <td><span class="badge badge-low">12 / Low</span></td>
+                    <td><span class="text-accent"><i class="bi bi-check-circle"></i> Completed</span></td>
+                    <td class="text-end pe-4">
+                        <a href="#" class="text-muted"><i class="bi bi-file-earmark-pdf"></i></a>
                     </td>
                 </tr>
-                {% endif %}
             </tbody>
         </table>
     </div>
@@ -324,7 +325,6 @@
 
         const targetInput = document.getElementById('target-input');
         const target = targetInput.value.trim();
-        const scanButton = e.target.querySelector('button[type="submit"]');
 
         const progressWrapper = document.getElementById('isat-scan-progress');
         const progressBar = document.getElementById('isat-scan-progress-bar');
@@ -333,11 +333,6 @@
         const resultsCard = document.getElementById('isat-results-card');
         const resultsBody = document.getElementById('isat-results-body');
         const resultsTarget = document.getElementById('isat-results-target');
-
-        // Tarama sürerken butonu devre dışı bırak, çift tıklamayı önle
-        scanButton.disabled = true;
-        const originalButtonHtml = scanButton.innerHTML;
-        scanButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Scanning...';
 
         // Önceki sonuçları/hataları temizle
         errorBox.style.display = 'none';
@@ -362,8 +357,6 @@
                 errorBox.textContent = data.error || 'Bilinmeyen bir hata oluştu.';
                 errorBox.style.display = 'block';
                 progressWrapper.style.display = 'none';
-                scanButton.disabled = false;
-                scanButton.innerHTML = originalButtonHtml;
                 return;
             }
 
@@ -611,15 +604,10 @@
                 progressWrapper.style.display = 'none';
             }, 800);
 
-            scanButton.disabled = false;
-            scanButton.innerHTML = originalButtonHtml;
-
         } catch (err) {
             errorBox.textContent = 'Sunucuya bağlanılamadı. Uygulamanın çalıştığından emin olun.';
             errorBox.style.display = 'block';
             progressWrapper.style.display = 'none';
-            scanButton.disabled = false;
-            scanButton.innerHTML = originalButtonHtml;
         }
     });
 </script>

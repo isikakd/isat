@@ -8,8 +8,7 @@ from app.services.whois_analyzer import get_whois_info
 from app.services.risk_scorer import calculate_risk_score
 from app.services.recommendation_engine import generate_recommendations
 from app.services.report_generator import generate_pdf_report, build_report_filename
-from app.models.database import save_scan_result, get_recent_scans, get_all_scans, get_scan_by_id
-from app.utils.validators import validate_target, normalize_target
+from app.utils.validators import validate_target
 
 # Bu blueprint, dashboard ve tarama ile ilgili tüm route'ları gruplar
 main_bp = Blueprint("main", __name__)
@@ -17,9 +16,8 @@ main_bp = Blueprint("main", __name__)
 
 @main_bp.route("/")
 def dashboard():
-    """Ana dashboard sayfasını, gerçek son taramalarla birlikte render eder."""
-    recent_scans = get_recent_scans(limit=5)
-    return render_template("index.html", active_page="dashboard", recent_scans=recent_scans)
+    """Ana dashboard sayfasını render eder."""
+    return render_template("index.html", active_page="dashboard")
 
 
 @main_bp.route("/scan", methods=["POST"])
@@ -34,11 +32,7 @@ def scan():
     DNS/WHOIS sorgulama ve risk skorlama da eklenecek.
     """
     data = request.get_json(silent=True) or {}
-    raw_target = data.get("target", "")
-
-    # Kullanıcının yaygın ama zararsız yazım hatalarını (https://, sondaki
-    # slash, port numarası) otomatik temizle; validasyon ondan sonra çalışır.
-    target = normalize_target(raw_target)
+    target = data.get("target", "").strip()
 
     # Giriş doğrulama: boş veya hatalı formatlı hedefleri en başta ele alıyoruz
     is_valid, error_message = validate_target(target)
@@ -118,7 +112,7 @@ def scan():
     except Exception:
         recommendations = []
 
-    result = {
+    return jsonify({
         "target": target,
         "ports": port_results,
         "headers": header_results,
@@ -127,17 +121,7 @@ def scan():
         "whois": whois_results,
         "risk": risk_results,
         "recommendations": recommendations
-    }
-
-    # Tamamlanan taramayı veritabanına kaydet. Bu adımın başarısız olması
-    # (örn. disk hatası), kullanıcının tarama sonucunu görmesini engellememeli
-    # — bu yüzden ayrı bir try/except içinde, sessizce ele alınıyor.
-    try:
-        save_scan_result(result)
-    except Exception:
-        pass
-
-    return jsonify(result)
+    })
 
 
 @main_bp.route("/report", methods=["POST"])
@@ -157,40 +141,6 @@ def report():
         return jsonify({"error": "Geçerli bir tarama verisi bulunamadı."}), 400
 
     try:
-        filename = build_report_filename(scan_data["target"])
-        output_path = os.path.join(current_app.config["REPORTS_DIR"], filename)
-        generate_pdf_report(scan_data, output_path)
-
-        return send_file(
-            output_path,
-            as_attachment=True,
-            download_name=filename,
-            mimetype="application/pdf"
-        )
-    except Exception:
-        return jsonify({"error": "PDF rapor oluşturulurken bir hata oluştu."}), 500
-
-
-@main_bp.route("/history")
-def history():
-    """Tüm geçmiş taramaların listelendiği Scan History sayfasını render eder."""
-    scans = get_all_scans()
-    return render_template("history.html", active_page="history", scans=scans)
-
-
-@main_bp.route("/history/<int:scan_id>/report")
-def download_historical_report(scan_id):
-    """
-    Geçmişte kaydedilmiş bir taramanın PDF raporunu, taramayı tekrar
-    çalıştırmadan, veritabanında saklanan sonuçtan yeniden üretir.
-    """
-    scan_record = get_scan_by_id(scan_id)
-
-    if scan_record is None:
-        return jsonify({"error": "Kayıt bulunamadı."}), 404
-
-    try:
-        scan_data = scan_record["result_json"]
         filename = build_report_filename(scan_data["target"])
         output_path = os.path.join(current_app.config["REPORTS_DIR"], filename)
         generate_pdf_report(scan_data, output_path)
